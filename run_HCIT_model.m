@@ -5,7 +5,7 @@ genInfCubeFlag = 0;
 %mainProgPath = '/Users/Pikachu/Dropbox/Kasdin_Lab/simulations';
 %largeFilePath = '~/Documents/MATLAB/'; % Store G matrix NOT in Dropbox--usually >1GB file size
 
-mainProgPath = '~/Workspace/PHCIL/FPWC/'; % Neil's workstation
+mainProgPath = '~/Workspace/PHCIL/FPWC/'; % Neil's workstation 
 largeFilePath = '~/Data/FPWC/';           % Neil's workstation
 
 Nitr = 20; % Number of control iterations
