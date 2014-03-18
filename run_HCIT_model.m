@@ -4,7 +4,8 @@ generate_matrices = 0;   %%%%%% flag to compute control matrices or not
 genInfCubeFlag = 0;
 %mainProgPath = '/Users/Pikachu/Dropbox/Kasdin_Lab/simulations';
 %largeFilePath = '~/Documents/MATLAB/'; % Store G matrix NOT in Dropbox--usually >1GB file size
-mainProgPath = '/Users/ntz/Workspace/PHCIL/FPWC/';
+%mainProgPath = '/Users/ntz/Workspace/PHCIL/FPWC/';
+mainProgPath = '~/Workspace/PHCIL/FPWC/';
 largeFilePath = '~/Data/FPWC/';
 
 Nitr = 20; % Number of control iterations
