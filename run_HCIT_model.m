@@ -4,9 +4,9 @@ generate_matrices = 0;   %%%%%% flag to compute control matrices or not
 genInfCubeFlag = 0;
 %mainProgPath = '/Users/Pikachu/Dropbox/Kasdin_Lab/simulations';
 %largeFilePath = '~/Documents/MATLAB/'; % Store G matrix NOT in Dropbox--usually >1GB file size
-%mainProgPath = '/Users/ntz/Workspace/PHCIL/FPWC/';
-mainProgPath = '~/Workspace/PHCIL/FPWC/';
-largeFilePath = '~/Data/FPWC/';
+
+mainProgPath = '~/Workspace/PHCIL/FPWC/'; % Neil's workstation
+largeFilePath = '~/Data/FPWC/';           % Neil's workstation
 
 Nitr = 20; % Number of control iterations
 controller = 'linesearch'; % Don't change for now: stroke min control method
