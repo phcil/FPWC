@@ -7,7 +7,6 @@ genInfCubeFlag = 0;
 %mainProgPath = '/Users/ntz/Workspace/PHCIL/FPWC/';
 mainProgPath = '~/Workspace/PHCIL/FPWC/';
 largeFilePath = '~/Data/FPWC/';
-%
 
 Nitr = 20; % Number of control iterations
 controller = 'linesearch'; % Don't change for now: stroke min control method
