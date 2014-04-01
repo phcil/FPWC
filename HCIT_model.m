@@ -48,7 +48,7 @@
 
 
 function [Eout,Lam0D] = HCIT_model(Ein,I00,SP0,DM1V,DM2V,VtoH1,VtoH2,Ddm,Nact,...
-    sampling,lambda0,lambda,z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,abFlag,...
+    sampling,lambda0,lambda,z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,abFlag,errmaps,...
     generate_matrices,num_dms,which_dm,genInfCubeFlag,infCube)
 
 if(size(Ein,1)~=size(SP0,1))
@@ -60,19 +60,12 @@ Npup = length(SP0)/2;
 % SP0pad = padarray(SP0,[2*Npup,2*Npup,0]); % Make 3x as wide
 
 if(abFlag)
-     % These files have RMS of 0.05 or 0.10
-     PSD_DM1 = (100*1e-9)*fitsread('./errormaps/psd_DM1_5nmRMS_N1000.fits');
-     PSD_DM2 = (100*1e-9)*fitsread('./errormaps/psd_DM2_5nmRMS_N2000.fits');
-     PSD_OAP1 = (100*1e-9)*fitsread('./errormaps/psd_OAP1_5nmRMS_N2000.fits');
-     PSD_OAP2 = (100*1e-9)*fitsread('./errormaps/psd_OAP2_5nmRMS_N2000.fits');
-     PSD_SP = (100*1e-9)*fitsread('./errormaps/psd_SP_10nmRMS_N1000.fits');
-
 % %    X  % Extra factor of 2 because in reflection
-     EDM1error = exp(1i*PSD_DM1*(2*pi/lambda));
-     EDM2error = exp(1i*PSD_DM2*(2*pi/lambda));
-     EOAP1error = exp(1i*PSD_OAP1*(2*pi/lambda));
-     EOAP2error = exp(1i*PSD_OAP2*(2*pi/lambda));
-     ESPerror = exp(1i*PSD_SP*(2*pi/lambda));
+     EDM1error = exp(1i*errmaps('DM1')*(2*pi/lambda));
+     EDM2error = exp(1i*errmaps('DM2')*(2*pi/lambda));
+     EOAP1error = exp(1i*errmaps('OAP1')*(2*pi/lambda));
+     EOAP2error = exp(1i*errmaps('OAP2')*(2*pi/lambda));
+     ESPerror = exp(1i*errmaps('SP')*(2*pi/lambda));
 else
      EDM1error = 1;
      EDM2error = 1;
