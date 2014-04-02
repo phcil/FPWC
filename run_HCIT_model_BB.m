@@ -1,6 +1,8 @@
-close all; clear all; clc;
+close all;
+%clear all;
+%clc;
 
-generate_matrices = 1;   %%%%%% flag to compute control matrices or not
+generate_matrices = 0;   %%%%%% flag to compute control matrices or not
 genInfCubeFlag = 0;
 
 %mainProgPath = '/Users/Pikachu/Dropbox/Kasdin_Lab/simulations';
@@ -8,23 +10,28 @@ genInfCubeFlag = 0;
 mainProgPath = '~/Workspace/PHCIL/FPWC/'; % Neil's workstation
 largeFilePath = '~/Data/FPWC/';           % Neil's workstation
 
-%Nitr = 20; % Number of control iterations
-Nitr = 3;
+Nitr = 50; % Number of control iterations
+%Nitr = 3;
 controller = 'linesearch'; % Don't change for now: stroke min control method
 c_range = [-8 0]; % log scale PSF plotting range
 plotflag = 1; % flag to plot PSF correction in real time
 
 SPfile = './SPs/SP_AFTA_loqo_hN1k_erNo_c8_r3_4WA13_60deg.fits';
 SP0 = fitsread(SPfile);
+BigN = 1000;
 sampling = 3; % pixels per lambda0/D in focal plane
 IP_OWA = 9; % OWA in focal plane, in lambda0/D
 lambda0 = 550e-9; % nominal wavelength
 lambda = lambda0*1.00; % wavelength used
-%fracBW = 0.1; % fractional bandwidth of correction
-%Nlambda = 3; % number of wavelength samples across correction band
-fracBW = 0.0;
-Nlambda = 1;
-lambda_vec = linspace(lambda - lambda*fracBW/2, lambda + lambda*fracBW/2, Nlambda) % vector of corrected wavelengths
+fracBW = 0.1; % fractional bandwidth of correction
+Nlambda = 3; % number of wavelength samples across correction band
+%fracBW = 0.;
+%Nlambda = 1;
+if Nlambda > 1
+    lambda_vec = linspace(lambda - lambda*fracBW/2, lambda + lambda*fracBW/2, Nlambda) % vector of corrected wavelengths
+else
+    lambda_vec = [lambda]
+end
 li_ref = round(Nlambda/2);
 Dpup = 48e-3; % meters
 Ddm = Dpup; % meters
@@ -39,7 +46,7 @@ DM2V = zeros(Nact);
 % VtoH2 = 5e-9*ones(Nact); % 5 nm/V in surface change
 VtoH1 = ones(Nact); % 
 VtoH2 = ones(Nact); % 
-Ein = ones(1000); % Input field at DM1
+Ein = ones(BigN); % Input field at DM1
 abFlag = 1;  % Flag to include aberrations on each optic
 PSD_DM1 = (100*1e-9)*fitsread('./errormaps/psd_DM1_5nmRMS_N1000.fits');
 PSD_DM2 = (100*1e-9)*fitsread('./errormaps/psd_DM2_5nmRMS_N2000.fits');
@@ -67,6 +74,8 @@ elseif (num_dms == 1)
     IPsideScore = 'R'; %'L', 'R', or 'LR'
 end
 
+G_mat_fname = sprintf('G_stroke_%dDM_%dpcntBW_at%dnm_Nlambda%d.mat', num_dms, round(fracBW*100), round(lambda*1e9), Nlambda);
+
 % Evaluate aberrated image at central wavelength
 [E_foc_ab_cent, Lam0D] = HCIT_model(Ein,1,SP0,DM1V,DM2V,VtoH1,VtoH2,Ddm,Nact,...
     sampling,lambda_vec(li_ref),lambda_vec(li_ref),z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,abFlag,errmaps,...
@@ -89,8 +98,8 @@ for li=1:Nlambda,
 end
 Im_bandavg = mean(Im, 3); % wavelength average of normalized images
 
-figure; imagesc(Lam0D,Lam0D,log10(Im_cent),[-8 0]); axis square; colorbar;
- title('Uncorrected PSF at central wavelength','Fontsize',24,'Interpreter','LaTeX');
+figure; imagesc(Lam0D,Lam0D,log10(Im_bandavg),[-8 0]); axis square; colorbar;
+ title('Uncorrected, band-averaged PSF','Fontsize',24,'Interpreter','LaTeX');
 xlabel('x ($\lambda_0$/D)','FontSize',16,'Interpreter','LaTeX'); 
 ylabel('y ($\lambda_0$/D)','FontSize',16,'Interpreter','LaTeX');
 axis equal; axis tight; axis xy;
@@ -196,7 +205,7 @@ Im_bandavg_seq = repmat(Im_bandavg,1,1,Nitr+1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 for Itr=1:Nitr
-    fprintf(['Iteration: ' num2str(Itr) ', Avg contrast @ central wav. / full passband: %.8e / %.8e\n'], contrast(Itr,li_ref), contrast_bandavg(Itr));
+    fprintf(['Iteration: ' num2str(Itr) ', Avg contrast @ ref wav. / band-avg''d: %.8e / %.8e\n'], contrast(Itr,li_ref), contrast_bandavg(Itr));
 if (Itr==1) && (generate_matrices==1)
 fprintf('Creating Influence Matrices ... '); tic
 
@@ -229,14 +238,14 @@ for li=1:Nlambda,
 end
 
 cd(largeFilePath);
-save G_stroke_2DM_BB  Gstar1 Gstar2 cor_ele score_ele I00
+save G_mat_fname  Gstar1 Gstar2 cor_ele score_ele I00
 cd(mainProgPath)
 
 fprintf(' done. Time: %.3f\n',toc);
 
 elseif (Itr==1) && (generate_matrices==0)
     cd(largeFilePath);
-    load G_stroke_2DM_BB
+    load(G_mat_fname)
     cd(mainProgPath)
 end
 
@@ -301,12 +310,12 @@ Field(:,:,Itr) = FieldActual(:,:,Itr);
 
 if num_dms==1
     RealGstarEab = zeros(Nact*Nact, Nlambda);
-    I00_mat = repmat(I00, Nact*Nact, 1);
-    I00_cube = repmat( reshape(I00,1,1,Nlambda), Nact*Nact, Nact*Nact, 1 );
+%    I00_mat = repmat(I00, Nact*Nact, 1);
+%    I00_cube = repmat( reshape(I00,1,1,Nlambda), Nact*Nact, Nact*Nact, 1 );
 elseif num_dms==2
     RealGstarEab = zeros(2*Nact*Nact, Nlambda);
-    I00_mat = repmat(I00, 2*Nact*Nact, 1);
-    I00_cube = repmat( reshape(I00,1,1,Nlambda), 2*Nact*Nact, 2*Nact*Nact, 1 );
+%    I00_mat = repmat(I00, 2*Nact*Nact, 1);
+%    I00_cube = repmat( reshape(I00,1,1,Nlambda), 2*Nact*Nact, 2*Nact*Nact, 1 );
 end
 
 for li=1:Nlambda,
@@ -321,8 +330,8 @@ for li=1:Nlambda,
     end
 end
 
-RealGstarEab_bandavg = mean(RealGstarEab./I00_mat, 2);
-M_bandavg = mean(M./I00_cube, 3);
+RealGstarEab_bandavg = mean(RealGstarEab, 2);
+M_bandavg = mean(M, 3);
 EyeM_bandavg = mean(EyeM, 3);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -431,14 +440,13 @@ EyeM_bandavg = mean(EyeM, 3);
     
    if(plotflag)     % Real-time image plane plot
 
-    figure(6); imagesc(Lam0D,Lam0D,log10(Im_bandavg_seq(:,:,Itr+1)),c_range); ch=colorbar; 
+    figure(6); imagesc(Lam0D,Lam0D,log10(Im_bandavg_seq(:,:,Itr+1)),c_range); axis square; ch=colorbar; 
     title('Corrected, band-averaged PSF','FontSize',24,'Interpreter','LaTeX');
     xlabel('x ($\lambda$/D)','FontSize',16,'Interpreter','LaTeX'); 
     ylabel('y ($\lambda$/D)','FontSize',16,'Interpreter','LaTeX');
-    xlim([-IP_OWA IP_OWA]); ylim([-IP_OWA IP_OWA])
+    axis equal; axis tight; axis xy;
+%    xlim([-IP_OWA IP_OWA]); ylim([-IP_OWA IP_OWA])
     set(gca,'FontSize',18,'FontName','Times','FontWeight','Normal')
-    axis equal; axis tight;
-    
     
 %     figure(7); imagesc(Lam0D,Lam0D,log10(Iinco2D),c_range); ch=colorbar; 
 %     title('Incoherent Light Estimate','FontSize',24,'Interpreter','LaTeX');
@@ -463,18 +471,22 @@ EyeM_bandavg = mean(EyeM, 3);
     contrast_right_bandavg(Itr+1) = mean(contrast_right(Itr+1,:));
 
     CTarget = target_frac*contrast(Itr+1); %_right(Itr+1);
-    fprintf('Left Contrast: %.3e Right Contrast: %.3e \n \n',contrast_left(Itr+1),contrast_right(Itr+1));
+    fprintf('Contrast: %.3e Left Contrast: %.3e Right Contrast: %.3e \n \n',...
+            contrast(Itr+1),contrast_left(Itr+1),contrast_right(Itr+1));
 
 end
 
 
 % contrast=(contrast_left+contrast_right)/2;
-figure(8); semilogy(0:Nitr,contrast_bandavg,0:Nitr,contrast_left_bandavg,...
-    0:Nitr,contrast_right_bandavg,'MarkerSize',19,'LineWidth',1.5);
+figure(8); semilogy(0:Nitr,contrast(:,li_ref),0:Nitr,contrast_left(:,li_ref),0:Nitr,contrast_right(:,li_ref),...
+                    0:Nitr,contrast_bandavg,0:Nitr,contrast_left_bandavg, 0:Nitr,contrast_right_bandavg,...
+                    'MarkerSize',19,'LineWidth',1.5);
 title('Contrast in Dark Hole','FontSize',24,'Interpreter','LaTeX');
 xlabel('Iteration','FontSize',16,'Interpreter','LaTeX'); 
 ylabel('Contrast','FontSize',16,'Interpreter','LaTeX');
-legend('Avg','Left','Right','Location','best');
+legend('Overall (lambda_{ref})','Left (lambda_{ref})', 'Right (lambda_{ref})',...
+       'Overall (band-avg''d)','Left (band-avg''d)','Right (band-avg''d)',...
+       'Location','best');
 % xlim([1 Nitr]);
 % ylim([ 0.8*contrast_both_des  1.5*contrast(1)])
 % ylim([ 0.8*contrast(end)  1.2*contrast(1)])
