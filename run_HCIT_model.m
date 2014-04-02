@@ -1,6 +1,8 @@
-close all; clear all; clc;
+close all;
+%clear all;
+clc;
 
-generate_matrices = 1;   %%%%%% flag to compute control matrices or not
+generate_matrices = 0;   %%%%%% flag to compute control matrices or not
 genInfCubeFlag = 0;
 
 %mainProgPath = '/Users/Pikachu/Dropbox/Kasdin_Lab/simulations';
@@ -351,14 +353,13 @@ end
     
    if(plotflag)     % Real-time image plane plot
 
-    figure(6); imagesc(Lam0D,Lam0D,log10(Im),c_range); ch=colorbar; 
+    figure(6); imagesc(Lam0D,Lam0D,log10(Im),c_range); axis square; ch=colorbar; 
     title('Corrected PSF','FontSize',24,'Interpreter','LaTeX');
     xlabel('x ($\lambda$/D)','FontSize',16,'Interpreter','LaTeX'); 
     ylabel('y ($\lambda$/D)','FontSize',16,'Interpreter','LaTeX');
-    xlim([-IP_OWA IP_OWA]); ylim([-IP_OWA IP_OWA])
+    axis equal; axis tight; axis xy;
+%    xlim([-IP_OWA IP_OWA]); ylim([-IP_OWA IP_OWA])
     set(gca,'FontSize',18,'FontName','Times','FontWeight','Normal')
-    axis equal; axis tight;
-    
     
 %     figure(7); imagesc(Lam0D,Lam0D,log10(Iinco2D),c_range); ch=colorbar; 
 %     title('Incoherent Light Estimate','FontSize',24,'Interpreter','LaTeX');
