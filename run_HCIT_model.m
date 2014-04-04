@@ -10,8 +10,8 @@ genInfCubeFlag = 0;
 mainProgPath = '~/Workspace/PHCIL/FPWC/'; % Neil's workstation
 largeFilePath = '~/Data/FPWC/';           % Neil's workstation
 
-%Nitr = 20; % Number of control iterations
-Nitr = 3;
+Nitr = 20; % Number of control iterations
+%Nitr = 3;
 controller = 'linesearch'; % Don't change for now: stroke min control method
 c_range = [-8 0]; % log scale PSF plotting range
 plotflag = 1; % flag to plot PSF correction in real time
