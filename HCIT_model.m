@@ -46,10 +46,32 @@
 % std(phaseAb1(:))
 % fitswrite(phaseAb1,'./errormaps/psd_OAP2_5nmRMS_N2000.fits');
 
+function [Eout,Lam0D] = HCIT_model(params, DM_config, I00, lambda, abFlag, generate_matrices, genInfCubeFlag)
 
-function [Eout,Lam0D] = HCIT_model(Ein,I00,SP0,DM1V,DM2V,VtoH1,VtoH2,Ddm,Nact,...
-    sampling,lambda0,lambda,z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,abFlag,errmaps,...
-    generate_matrices,num_dms,which_dm,genInfCubeFlag,infCube)
+Ein = params.Ein;
+SP0 = params.SP0;
+VtoH1 = params.VtoH1;
+VtoH2 = params.VtoH2;
+Ddm = params.Ddm;
+Dpup = params.Dpup;
+Nact = params.Nact;
+sampling = params.sampling;
+lambda0 = params.lambda0;
+z_dm1_dm2 = params.z_dm1_dm2;
+fl_M1 = params.fl_M1;
+fl_M2 = params.fl_M2;
+fl_M3 = params.fl_M3;
+IP_OWA = params.IP_OWA;
+errmaps = params.errmaps;
+infCube = params.infCube;
+num_dms = DM_config.num_dms;
+which_dm = DM_config.which_dm;
+DM1V = DM_config.DM1V;
+DM2V = DM_config.DM2V;
+
+%function [Eout,Lam0D] = HCIT_model(Ein,I00,SP0,DM1V,DM2V,VtoH1,VtoH2,Ddm,Nact,...
+%    sampling,lambda0,lambda,z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,abFlag,errmaps,...
+%    generate_matrices,num_dms,which_dm,genInfCubeFlag,infCube)
 
 if(size(Ein,1)~=size(SP0,1))
     disp('Error: Input field and SP dimensions do not match.');
@@ -67,11 +89,11 @@ if(abFlag)
      EOAP2error = exp(1i*errmaps('OAP2')*(2*pi/lambda));
      ESPerror = exp(1i*errmaps('SP')*(2*pi/lambda));
 else
-     EDM1error = 1;
-     EDM2error = 1;
-     EOAP1error = 1;
-     EOAP2error = 1;
-     ESPerror = 1;
+     EDM1error = ones(size(errmaps('DM1')));
+     EDM2error = ones(size(errmaps('DM2')));
+     EOAP1error = ones(size(errmaps('OAP1')));
+     EOAP2error = ones(size(errmaps('OAP2')));
+     ESPerror = ones(size(errmaps('SP')));
 end
 
 
@@ -151,7 +173,7 @@ else
     DM1surfU = makeDMsurf_v1(Nact,2*Npup,NptsBuffer,DM1V,VtoH1,company,pitch_other,genInfCubeFlag,infCube);
     DM1surfUpad = padarray(DM1surfU,[NptsZeroPad,NptsZeroPad,0],0);
     E_dm1 = exp(1i*DM1surfUpad).*EinStopPad.*EDM1errorPad;
-
+    
     DM2surfU = makeDMsurf_v1(Nact,2*Npup,NptsBuffer,DM2V,VtoH2,company,pitch_other,genInfCubeFlag,infCube);
     DM2surfUpad = padarray(DM2surfU,[NptsZeroPad,NptsZeroPad,0],0);
     E_dm2 = exp(1i*DM2surfUpad).*EDM2error.*prop_PTP(E_dm1,2*Dpup,lambda,z_dm1_dm2,samplingFlag);

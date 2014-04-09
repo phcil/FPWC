@@ -1,8 +1,8 @@
 close all;
-%clear all;
-%clc;
+clear all;
+clc;
 
-generate_matrices = 0;   %%%%%% flag to compute control matrices or not
+generate_matrices = 1;   %%%%%% flag to compute control matrices or not
 genInfCubeFlag = 0;
 
 %mainProgPath = '/Users/Pikachu/Dropbox/Kasdin_Lab/simulations';
@@ -10,76 +10,81 @@ genInfCubeFlag = 0;
 mainProgPath = '~/Workspace/PHCIL/FPWC/'; % Neil's workstation
 largeFilePath = '~/Data/FPWC/';           % Neil's workstation
 
-Nitr = 30; % Number of control iterations
-%Nitr = 3;
+%Nitr = 30; % Number of control iterations
+Nitr = 3;
 controller = 'linesearch'; % Don't change for now: stroke min control method
 c_range = [-8 0]; % log scale PSF plotting range
 plotflag = 1; % flag to plot PSF correction in real time
 
 SPfile = './SPs/SP_AFTA_loqo_hN1k_erNo_c8_r3_4WA13_60deg.fits';
-SP0 = fitsread(SPfile);
+model_params.SP0 = fitsread(SPfile);
 BigN = 1000;
-sampling = 3; % pixels per lambda0/D in focal plane
-IP_OWA = 9; % OWA in focal plane, in lambda0/D
+model_params.sampling = 3; % pixels per lambda0/D in focal plane
+model_params.IP_OWA = 9; % OWA in focal plane, in lambda0/D
 lambda0 = 550e-9; % nominal wavelength
-lambda = lambda0*1.00; % wavelength used
-fracBW = 0.1; % fractional bandwidth of correction
-Nlambda = 3; % number of wavelength samples across correction band
-%fracBW = 0.;
-%Nlambda = 1;
-if Nlambda > 1
-    lambda_vec = linspace(lambda - lambda*fracBW/2, lambda + lambda*fracBW/2, Nlambda) % vector of corrected wavelengths
-else
-    lambda_vec = [lambda]
-end
-li_ref = round(Nlambda/2);
-Dpup = 48e-3; % meters
-Ddm = Dpup; % meters
-z_dm1_dm2 = 1; % meters
-fl_M1 = 1.5;  % focal lengths of OAPs
-fl_M2 = fl_M1/2;
-fl_M3 = 0.774;
-Nact = 16;  % Number of actuators across the DMs
-DM1V = zeros(Nact);
-DM2V = zeros(Nact);
+model_params.lambda0 = lambda0*1.00; % wavelength used
+model_params.Dpup = 48e-3; % meters
+model_params.Ddm = model_params.Dpup; % meters
+model_params.z_dm1_dm2 = 1; % meters
+model_params.fl_M1 = 1.5;  % focal lengths of OAPs
+model_params.fl_M2 = model_params.fl_M1/2;
+model_params.fl_M3 = 0.774;
+model_params.Nact = 16;  % Number of actuators across the DMs
 % VtoH1 = 5e-9*ones(Nact); % 5 nm/V in surface change
 % VtoH2 = 5e-9*ones(Nact); % 5 nm/V in surface change
-VtoH1 = ones(Nact); % 
-VtoH2 = ones(Nact); % 
-Ein = ones(BigN); % Input field at DM1
-abFlag = 1;  % Flag to include aberrations on each optic
+model_params.VtoH1 = ones(model_params.Nact); % 
+model_params.VtoH2 = ones(model_params.Nact); % 
+model_params.Ein = ones(BigN); % Input field at DM1
+model_params.abFlag = 1;  % Flag to include aberrations on each optic
 PSD_DM1 = (100*1e-9)*fitsread('./errormaps/psd_DM1_5nmRMS_N1000.fits');
 PSD_DM2 = (100*1e-9)*fitsread('./errormaps/psd_DM2_5nmRMS_N2000.fits');
 PSD_OAP1 = (100*1e-9)*fitsread('./errormaps/psd_OAP1_5nmRMS_N2000.fits');
 PSD_OAP2 = (100*1e-9)*fitsread('./errormaps/psd_OAP2_5nmRMS_N2000.fits');
 PSD_SP = (100*1e-9)*fitsread('./errormaps/psd_SP_10nmRMS_N1000.fits');
-errmaps = containers.Map({'DM1','DM2','OAP1','OAP2','SP'},...
-                         {PSD_DM1,PSD_DM2,PSD_OAP1,PSD_OAP2,PSD_SP});
+model_params.errmaps = containers.Map({'DM1','DM2','OAP1','OAP2','SP'},...
+                                      {PSD_DM1,PSD_DM2,PSD_OAP1,PSD_OAP2,PSD_SP});
+fracBW = 0.1; % fractional bandwidth of correction
+Nlambda = 3; % number of wavelength samples across correction band
+%Nlambda = 1;
+if Nlambda > 1
+    lambda_vec = linspace(model_params.lambda0 - model_params.lambda0*fracBW/2,...
+                          model_params.lambda0 + model_params.lambda0*fracBW/2,...
+                          Nlambda) % vector of corrected wavelengths
+else
+    lambda_vec = [model_params.lambda0];
+end
+li_ref = round(Nlambda/2);
 
 if(genInfCubeFlag==0)
     cd(largeFilePath);
-    load infCubeData 
+    load infCubeData
+    model_params.infCube = infCube;
     cd(mainProgPath)
 else
-    infCube = 1; % place holder value
+    model_params.infCube = 1; % place holder value
 end
+genGmat_False = 0; genGmat_True = 1;
+aberr_False = 0; aberr_True = 1;
+genInfCube_False = 0; genInfCube_True = 1;
 
-num_dms=2; % 1 or 2, number of DMs to use.
-which_dm=1;  % used if num_dms==1. DM1 is at pupil; DM2 is after pupil
-if (num_dms == 2)
+DM_config.num_dms=2; % 1 or 2, number of DMs to use.
+DM_config.which_dm=1;  % used if num_dms==1. DM1 is at pupil; DM2 is after pupil
+DM_config.DM1V = zeros(model_params.Nact);
+DM_config.DM2V = zeros(model_params.Nact);
+if (DM_config.num_dms == 2)
     IPsideCor = 'LR'; %'L', 'R', or 'LR'  % which side of image plane to correct
     IPsideScore = 'LR'; %'L', 'R', or 'LR'
-elseif (num_dms == 1)
+elseif (DM_config.num_dms == 1)
     IPsideCor = 'R'; %'L', 'R', or 'LR'
     IPsideScore = 'R'; %'L', 'R', or 'LR'
 end
 
-G_mat_fname = sprintf('G_stroke_%dDM_%dpcntBW_at%dnm_Nlambda%d.mat', num_dms, round(fracBW*100), round(lambda*1e9), Nlambda);
+G_mat_fname = sprintf('G_stroke_%dDM_%dpcntBW_at%dnm_Nlambda%02d.mat', DM_config.num_dms,...
+                      round(fracBW*100), round(model_params.lambda0*1e9), Nlambda);
 
 % Evaluate aberrated image at central wavelength
-[E_foc_ab_cent, Lam0D] = HCIT_model(Ein,1,SP0,DM1V,DM2V,VtoH1,VtoH2,Ddm,Nact,...
-    sampling,lambda_vec(li_ref),lambda_vec(li_ref),z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,abFlag,errmaps,...
-    0,num_dms,which_dm,genInfCubeFlag,infCube);
+I00 = 1.;
+[E_foc_ab_cent, Lam0D] = HCIT_model(model_params, DM_config, I00, model_params.lambda0, aberr_True, genGmat_False, genInfCubeFlag);
 I00_cent = max(max(abs(E_foc_ab_cent).^2));
 Im_cent = abs(E_foc_ab_cent).^2/I00_cent;
 E_foc_ab_cent = E_foc_ab_cent/sqrt(I00_cent);
@@ -89,9 +94,8 @@ Im = E_foc_ab*0;
 I00 = zeros(1,Nlambda);
 % Evaluate aberrated image at all wavelenth samples in passband
 for li=1:Nlambda,
-    [E_foc_ab(:,:,li), ~] = HCIT_model(Ein,1,SP0,DM1V,DM2V,VtoH1,VtoH2,Ddm,Nact,...
-        sampling,lambda_vec(li_ref),lambda_vec(li),z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,abFlag,errmaps,...
-        0,num_dms,which_dm,genInfCubeFlag,infCube);
+    I00 = 1.;
+    [E_foc_ab(:,:,li), ~] = HCIT_model(model_params, DM_config, I00, lambda_vec(li), aberr_True, genGmat_False, genInfCube_False);
     I00(li) = max(max(abs(E_foc_ab(:,:,li)).^2));
     Im(:,:,li) = abs(E_foc_ab(:,:,li)).^2/I00(li);
     E_foc_ab(:,:,li) = E_foc_ab(:,:,li)/sqrt(I00(li));
@@ -119,7 +123,7 @@ end
 
 %%
 
-Nimg = sampling*IP_OWA; % there are (2*Nimg+1) points across the focal plane
+Nimg = model_params.sampling*model_params.IP_OWA; % there are (2*Nimg+1) points across the focal plane
 flatFlag = 0;           % 1 for trapezoid, 0 for doughnut segment, 3 for rounded claw shape, 4 for rounded doughnut segment
 flatFlagScore = 0; 
 Mwa_cor = [4 7 0];    % [IWA, OWA, XI_min] for correction area
@@ -176,8 +180,8 @@ CTarget = target_frac * contrast_bandavg(1);
 
 %Gstar1_cent = zeros(Nact^2,length(cor_ele));
 %Gstar2_cent = zeros(Nact^2,length(cor_ele));
-Gstar1 = zeros(Nact^2,length(cor_ele),Nlambda);
-Gstar2 = zeros(Nact^2,length(cor_ele),Nlambda);
+Gstar1 = zeros(model_params.Nact^2,length(cor_ele),Nlambda);
+Gstar2 = zeros(model_params.Nact^2,length(cor_ele),Nlambda);
 % Eim = zeros(2*Nimg+1,2*Nimg+1,Nitr); 
 %FieldActual = zeros(length(cor_ele),Nitr);
 %Field = zeros(length(cor_ele),Nitr);
@@ -190,12 +194,10 @@ for li=1:Nlambda,
     FieldActual(:,li,1) = E_foc_ab_mono(cor_ele);
 end
 
-DM1Vcor = zeros(Nact,Nact); % total voltage on DM1
-dDM1V = zeros(Nact,Nact);  % delta voltage on DM1
-DM2Vcor = zeros(Nact,Nact);  % total voltage on DM2
-dDM2V = zeros(Nact,Nact);  % delta voltage on DM2
-DM1Vcor_array = zeros(Nact,Nact,Nitr+1);
-DM2Vcor_array = zeros(Nact,Nact,Nitr+1);
+dDM1V = zeros(model_params.Nact,model_params.Nact);  % delta voltage on DM1
+dDM2V = zeros(model_params.Nact,model_params.Nact);  % delta voltage on DM2
+DM1Vcor_array = zeros(model_params.Nact,model_params.Nact,Nitr+1);
+DM2Vcor_array = zeros(model_params.Nact,model_params.Nact,Nitr+1);
 Im_seq = repmat(Im,1,1,1,Nitr+1);
 Im_bandavg_seq = repmat(Im_bandavg,1,1,Nitr+1);
 
@@ -204,41 +206,49 @@ Im_bandavg_seq = repmat(Im_bandavg,1,1,Nitr+1);
 %Begin the Control Iterations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%function [Eout,Lam0D] = HCIT_model(Ein,I00,SP0,DM1V,DM2V,VtoH1,VtoH2,Ddm,Nact,...
+%    sampling,lambda0,lambda,z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,abFlag,errmaps,...
+%    generate_matrices,num_dms,which_dm,genInfCubeFlag,infCube)
+
 for Itr=1:Nitr
     fprintf(['Iteration: ' num2str(Itr) ', Avg contrast @ ref wav. / band-avg''d: %.8e / %.8e\n'], contrast(Itr,li_ref), contrast_bandavg(Itr));
 if (Itr==1) && (generate_matrices==1)
 fprintf('Creating Influence Matrices ... '); tic
 
+genGmat_DM_config.num_dms = 1;
+abFlag_False = 0;
 for li=1:Nlambda,
     fprintf('\nChannel %d/%d (%.2f nm):\n', li, Nlambda, lambda_vec(li)*1e9);
-    if (num_dms==2) || (which_dm==1)        % DM1, compute Jacobian
+    model_params.lambda = lambda_vec(li);
+    model_params.I00 = I00(li);
+    if (DM_config.num_dms==2) || (DM_config.which_dm==1)        % DM1, compute Jacobian
+        genGmat_DM_config.which_dm = 1;
         fprintf(' DM1 ...');
-        for q = 1:Nact^2,   
-            DMSweep = zeros(Nact);
+        for q = 1:model_params.Nact^2,
+            DMSweep = zeros(model_params.Nact);
             DMSweep(q) = 1;
-            DM1V = DMSweep; DM2V = zeros(Nact);
-            [Etemp1,~] = HCIT_model(Ein,I00(li),SP0,DM1V,DM2V,VtoH1,VtoH2,Ddm,Nact,...
-                sampling,lambda_vec(li_ref),lambda_vec(li),z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,0,errmaps,1,1,1,genInfCubeFlag,infCube);
+            genGmat_DM_config.DM1V = DMSweep;
+            genGmat_DM_config.DM2V = zeros(model_params.Nact);
+            [Etemp1,~] = HCIT_model(model_params, genGmat_DM_config, I00(li), lambda_vec(li), aberr_False, genGmat_True, genInfCube_False);
             Gstar1(q,:,li) = conj(Etemp1(cor_ele)); % Re-order into a vector for the Jacobian matrix
         end   
     end
-
-    if (num_dms==2) || (which_dm==2)        % DM2 (after pupil), compute Jacobian
+    if (DM_config.num_dms==2) || (DM_config.which_dm==2)        % DM2 (after pupil), compute Jacobian
         fprintf(' DM2 ...');
-        for q = 1:Nact^2,   
-            DMSweep = zeros(Nact);
+        genGmat_DM_config.which_dm = 2;
+        for q = 1:model_params.Nact^2,   
+            DMSweep = zeros(model_params.Nact);
             DMSweep(q) = 1;
-            DM1V = zeros(Nact);
-            DM2V = DMSweep; 
-            [Etemp2,~] = HCIT_model(Ein,I00(li),SP0,DM1V,DM2V,VtoH1,VtoH2,Ddm,Nact,...
-                sampling,lambda_vec(li_ref),lambda_vec(li),z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,0,errmaps,1,1,2,genInfCubeFlag,infCube);
+            genGmat_DM_config.DM1V = zeros(model_params.Nact);
+            genGmat_DM_config.DM2V = DMSweep;
+            [Etemp2,~] = HCIT_model(model_params, genGmat_DM_config, I00(li), lambda_vec(li), aberr_False, genGmat_True, genInfCube_False);
             Gstar2(q,:,li) = conj(Etemp2(cor_ele)); % Re-order into a vector for the Jacobian matrix
         end
     end
 end
 
 cd(largeFilePath);
-save G_mat_fname  Gstar1 Gstar2 cor_ele score_ele I00
+save(G_mat_fname, 'Gstar1', 'Gstar2', 'cor_ele', 'score_ele', 'I00')
 cd(mainProgPath)
 
 fprintf(' done. Time: %.3f\n',toc);
@@ -250,25 +260,25 @@ elseif (Itr==1) && (generate_matrices==0)
 end
 
 if(Itr==1)
-    G1 = zeros(length(cor_ele), Nact*Nact, Nlambda);
-    G2 = zeros(length(cor_ele), Nact*Nact, Nlambda);
-    if num_dms==1
-        M = zeros(Nact*Nact, Nact*Nact, Nlambda);
-        EyeM = repmat(eye(Nact*Nact,Nact*Nact), 1, 1, Nlambda);
-    elseif num_dms==2
-        M = zeros(2*Nact*Nact, 2*Nact*Nact, Nlambda);
-        EyeM = repmat(eye(2*Nact*Nact,2*Nact*Nact), 1, 1, Nlambda);
+    G1 = zeros(length(cor_ele), model_params.Nact*model_params.Nact, Nlambda);
+    G2 = zeros(length(cor_ele), model_params.Nact*model_params.Nact, Nlambda);
+    if DM_config.num_dms==1
+        M = zeros(model_params.Nact*model_params.Nact, model_params.Nact*model_params.Nact, Nlambda);
+        EyeM = repmat(eye(model_params.Nact*model_params.Nact,model_params.Nact*model_params.Nact), 1, 1, Nlambda);
+    elseif DM_config.num_dms==2
+        M = zeros(2*model_params.Nact*model_params.Nact, 2*model_params.Nact*model_params.Nact, Nlambda);
+        EyeM = repmat(eye(2*model_params.Nact*model_params.Nact,2*model_params.Nact*model_params.Nact), 1, 1, Nlambda);
     end
     for li=1:Nlambda,
-        if num_dms==1 && which_dm==1
-            G1(:,:,li) = ( squeeze(Gstar1(:,:,li)).*repmat(Maskline(cor_ele),Nact*Nact,1) )';
+        if DM_config.num_dms==1 && DM_config.which_dm==1
+            G1(:,:,li) = ( squeeze(Gstar1(:,:,li)).*repmat(Maskline(cor_ele),model_params.Nact*model_params.Nact,1) )';
             M(:,:,li) = real( squeeze(G1(:,:,li))'*squeeze(G1(:,:,li)) );%/I00;
-        elseif num_dms==1 && which_dm==2
-            G2(:,:,li) = ( squeeze(Gstar2(:,:,li)).*repmat(Maskline(cor_ele),Nact*Nact,1) )';  
+        elseif DM_config.num_dms==1 && DM_config.which_dm==2
+            G2(:,:,li) = ( squeeze(Gstar2(:,:,li)).*repmat(Maskline(cor_ele),model_params.Nact*model_params.Nact,1) )';  
             M(:,:,li) = real( sueeze(G2(:,:,li))'*squeeze(G2(:,:,li)) );%/I00;
-        elseif num_dms==2
-            G1(:,:,li) = ( squeeze(Gstar1(:,:,li)).*repmat(Maskline(cor_ele),Nact*Nact,1) )';
-            G2(:,:,li) = ( squeeze(Gstar2(:,:,li)).*repmat(Maskline(cor_ele),Nact*Nact,1) )';
+        elseif DM_config.num_dms==2
+            G1(:,:,li) = ( squeeze(Gstar1(:,:,li)).*repmat(Maskline(cor_ele),model_params.Nact*model_params.Nact,1) )';
+            G2(:,:,li) = ( squeeze(Gstar2(:,:,li)).*repmat(Maskline(cor_ele),model_params.Nact*model_params.Nact,1) )';
             MatrixInfluence11 = real( squeeze(G1(:,:,li))'*squeeze(G1(:,:,li)) );%/I00;
             MatrixInfluence12 = real( squeeze(G1(:,:,li))'*squeeze(G2(:,:,li)) );%/I00;
             MatrixInfluence22 = real( squeeze(G2(:,:,li))'*squeeze(G2(:,:,li)) );%/I00;
@@ -308,22 +318,22 @@ Field(:,:,Itr) = FieldActual(:,:,Itr);
 
 % %EimProj is Im{b0} in matrix notation.
 
-if num_dms==1
-    RealGstarEab = zeros(Nact*Nact, Nlambda);
+if DM_config.num_dms==1
+    RealGstarEab = zeros(model_params.Nact*model_params.Nact, Nlambda);
 %    I00_mat = repmat(I00, Nact*Nact, 1);
 %    I00_cube = repmat( reshape(I00,1,1,Nlambda), Nact*Nact, Nact*Nact, 1 );
-elseif num_dms==2
-    RealGstarEab = zeros(2*Nact*Nact, Nlambda);
+elseif DM_config.num_dms==2
+    RealGstarEab = zeros(2*model_params.Nact*model_params.Nact, Nlambda);
 %    I00_mat = repmat(I00, 2*Nact*Nact, 1);
 %    I00_cube = repmat( reshape(I00,1,1,Nlambda), 2*Nact*Nact, 2*Nact*Nact, 1 );
 end
 
 for li=1:Nlambda,
-    if num_dms==1 && which_dm==1
+    if DM_config.num_dms==1 && DM_config.which_dm==1
         RealGstarEab(:,li) = real(squeeze(G1(:,:,li))'*Field(:,li,Itr));
-    elseif num_dms==1 && which_dm==2
+    elseif DM_config.num_dms==1 && DM_config.which_dm==2
         RealGstarEab(:,li) = real(squeeze(G2(:,:,li))'*Field(:,li,Itr));
-    elseif num_dms==2
+    elseif DM_config.num_dms==2
         RealGstarEab1 = real(squeeze(G1(:,:,li))'*Field(:,li,Itr));
         RealGstarEab2 = real(squeeze(G2(:,:,li))'*Field(:,li,Itr));
         RealGstarEab(:,li) = [RealGstarEab1; RealGstarEab2];
@@ -404,23 +414,21 @@ EyeM_bandavg = mean(EyeM, 3);
     fprintf(' done. Time: %.3f\n',toc);
 
     % Simulate the physics
-    if (num_dms==1 && which_dm==1)
-        dDM1V = reshape(DMcalc.',Nact,Nact);
-        DM1Vcor = DM1Vcor + dDM1V;
-    elseif (num_dms==1 && which_dm==2)
-        dDM2V = reshape(DMcalc.',Nact,Nact);
-        DM2Vcor = DM2Vcor + dDM2V; % units of phase
-    elseif num_dms==2
-        dDM1V = reshape(DMcalc(1:Nact^2).',Nact,Nact);
-        dDM2V = reshape(DMcalc(Nact^2+1:end).',Nact,Nact);
-        DM1Vcor = DM1Vcor + dDM1V; % in radians
-        DM2Vcor = DM2Vcor + dDM2V; % in radians
+    if (DM_config.num_dms==1 && DM_config.which_dm==1)
+        dDM1V = reshape(DMcalc.',model_params.Nact,model_params.Nact);
+        DM_config.DM1V = DM_config.DM1V + dDM1V;
+    elseif (DM_config.num_dms==1 && DM_config.which_dm==2)
+        dDM2V = reshape(DMcalc.',model_params.Nact,model_params.Nact);
+        DM_config.DM2V = DM_config.DM2V + dDM2V; % units of phase
+    elseif DM_config.num_dms==2
+        dDM1V = reshape(DMcalc(1:model_params.Nact^2).',model_params.Nact,model_params.Nact);
+        dDM2V = reshape(DMcalc(model_params.Nact^2+1:end).',model_params.Nact,model_params.Nact);
+        DM_config.DM1V = DM_config.DM1V + dDM1V; % in radians
+        DM_config.DM2V = DM_config.DM2V + dDM2V; % in radians
     end
     
     for li=1:Nlambda,
-        [Eout,~] = HCIT_model(Ein,I00(li),SP0,DM1Vcor,DM2Vcor,VtoH1,VtoH2,Ddm,Nact,...
-            sampling,lambda_vec(li_ref),lambda_vec(li),z_dm1_dm2,fl_M1,fl_M2,fl_M3,Dpup,IP_OWA,abFlag,errmaps,...
-            0,num_dms,which_dm,genInfCubeFlag,infCube);
+        [Eout,~] = HCIT_model(model_params, DM_config, I00(li), lambda_vec(li), aberr_True, genGmat_False, genInfCube_False);
         Im(:,:,li) = abs(Eout).^2;
         FieldActual(:,li,Itr+1) = Eout(cor_ele);   % Actual field in esimtation area
     end
@@ -458,8 +466,8 @@ EyeM_bandavg = mean(EyeM, 3);
         pause(2); % Pause to let the plot update
    end
 
-    DM1Vcor_array(:,:,Itr) = DM1Vcor;
-    DM2Vcor_array(:,:,Itr) = DM2Vcor;
+    DM1Vcor_array(:,:,Itr) = DM_config.DM1V;
+    DM2Vcor_array(:,:,Itr) = DM_config.DM2V;
     %CorScore_Right = sum(sum(Im.*CorMask_Right))/area;
     for li=1:Nlambda,
         contrast(Itr+1,li) = sum(sum( Im(:,:,li).*ScoreMask ))/area;
@@ -476,8 +484,6 @@ EyeM_bandavg = mean(EyeM, 3);
 
 end
 
-
-% contrast=(contrast_left+contrast_right)/2;
 figure(8); semilogy(0:Nitr,contrast(:,li_ref),0:Nitr,contrast_left(:,li_ref),0:Nitr,contrast_right(:,li_ref),...
                     0:Nitr,contrast_bandavg,0:Nitr,contrast_left_bandavg, 0:Nitr,contrast_right_bandavg,...
                     'MarkerSize',19,'LineWidth',1.5);
