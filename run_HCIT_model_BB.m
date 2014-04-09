@@ -83,8 +83,8 @@ G_mat_fname = sprintf('G_stroke_%dDM_%dpcntBW_at%dnm_Nlambda%02d.mat', DM_config
                       round(fracBW*100), round(model_params.lambda0*1e9), Nlambda);
 
 % Evaluate aberrated image at central wavelength
-I00 = 1.;
-[E_foc_ab_cent, Lam0D] = HCIT_model(model_params, DM_config, I00, model_params.lambda0, aberr_True, genGmat_False, genInfCubeFlag);
+I00_unity = 1.;
+[E_foc_ab_cent, Lam0D] = HCIT_model(model_params, DM_config, I00_unity, model_params.lambda0, aberr_True, genGmat_False, genInfCubeFlag);
 I00_cent = max(max(abs(E_foc_ab_cent).^2));
 Im_cent = abs(E_foc_ab_cent).^2/I00_cent;
 E_foc_ab_cent = E_foc_ab_cent/sqrt(I00_cent);
@@ -94,8 +94,7 @@ Im = E_foc_ab*0;
 I00 = zeros(1,Nlambda);
 % Evaluate aberrated image at all wavelenth samples in passband
 for li=1:Nlambda,
-    I00 = 1.;
-    [E_foc_ab(:,:,li), ~] = HCIT_model(model_params, DM_config, I00, lambda_vec(li), aberr_True, genGmat_False, genInfCube_False);
+    [E_foc_ab(:,:,li), ~] = HCIT_model(model_params, DM_config, I00_unity, lambda_vec(li), aberr_True, genGmat_False, genInfCube_False);
     I00(li) = max(max(abs(E_foc_ab(:,:,li)).^2));
     Im(:,:,li) = abs(E_foc_ab(:,:,li)).^2/I00(li);
     E_foc_ab(:,:,li) = E_foc_ab(:,:,li)/sqrt(I00(li));
